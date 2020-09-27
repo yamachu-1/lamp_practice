@@ -108,3 +108,4 @@
   </script>
 </body>
 </html>
+<!-- 基本的にviewにあるprintにhtmlspecialspecialcharsを載せました。ただしitem_idやuser_idなどこちらでAUTO＿INCREMENTしたものには実装しておりません。 -->
