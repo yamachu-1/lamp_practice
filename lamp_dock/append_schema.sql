@@ -7,4 +7,4 @@ create table purchase (
     purchase_date date,
     primary key(purchase_id)
     );
-    
+a    
