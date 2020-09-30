@@ -16,10 +16,10 @@ function get_item($db, $item_id){
     FROM
       items
     WHERE
-      item_id = {$item_id}
+      item_id = ?
   ";
 
-  return fetch_query($db, $sql);
+  return fetch_query($db, $sql, [$item_id]);
 }
 //is_openがtrueのときは1のみ取得。それ以外は全て取得　？？？
 function get_items($db, $is_open = false){
@@ -83,16 +83,16 @@ function insert_item($db, $name, $price, $stock, $filename, $status){
   $sql = "
     INSERT INTO
       items(
-        name,
-        price,
-        stock,
-        image,
-        status
+        name = ?,
+        price = ?,
+        stock = ?,
+        image = ?,
+        status = ?
       )
-    VALUES('{$name}', {$price}, {$stock}, '{$filename}', {$status_value});
+
   ";
 
-  return execute_query($db, $sql);
+  return execute_query($db, $sql, [$name, $price, $stock, $filename, $status_value]);
 }
 //item_idから検索して、statusを更新
 function update_item_status($db, $item_id, $status){
@@ -100,13 +100,13 @@ function update_item_status($db, $item_id, $status){
     UPDATE
       items
     SET
-      status = {$status}
+      status = ?
     WHERE
-      item_id = {$item_id}
+      item_id = ?
     LIMIT 1
   ";
   
-  return execute_query($db, $sql);
+  return execute_query($db, $sql, [$status, $item_id]);
 }
 //item_idからstockを更新
 function update_item_stock($db, $item_id, $stock){
@@ -114,28 +114,30 @@ function update_item_stock($db, $item_id, $stock){
     UPDATE
       items
     SET
-      stock = {$stock}
+      stock = ?
     WHERE
-      item_id = {$item_id}
+      item_id = ?
     LIMIT 1
   ";
   
-  return execute_query($db, $sql);
+  return execute_query($db, $sql, [$stock, $item_id]);
 }
 //購入履歴をDBに登録
-function add_purchase_history($user_id,$item_id,$amount,$price){
+function add_purchase_history($db, $user_id,$item_id,$amount,$price){
   $sql = "
     INSERT INTO
       purchase(
-        user_id, 
-        item_id, 
-        amount, 
-        price, 
-        purchase_date 
+        user_id = ?, 
+        item_id = ?, 
         )
-    VALUES ($user_id, $item_id, $amount, $price, DATE)
+    AND
+    INSERT INTO
+        purchase_details(
+          item_id =?,
+          amount =?
+          )
     ";
-    return execute_query($db,$sql);
+    return execute_query($db,$sql, [$user_id, $item_id, $item_id, $amount]);
 }
 //DBへの登録＋stockの更新ができるか確認！
 function update_item_stock_and_history($db,$user_id, $item_id, $stock, $amount, 
@@ -160,16 +162,21 @@ function output_history($db, $user_id){
     items.image,
     purchase.purchase_id,
     purchase.user_id,
-    purchase.item_id,
-    purchase.stock,
-    purchase.price,
-    purchase.purchase_date
+    purchase.purchase_date,
+    purchase_details.purchase_id,
+    purchase_details.item_id,
+    purchase_details.amount
+    
   FROM
     purchase
-  JOIN
+  INNER JOIN
+    purchase_details
+  ON
+    purchase.purchase_id = purchase_details.purchase_id
+  INNER JOIN
     items
   ON
-    purchase.item_id = items.item_id
+    items.item_id = purchase_details.item_id
 
   ORDER BY
    purchase_date ASC
