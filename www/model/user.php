@@ -17,7 +17,7 @@ function get_user($db, $user_id){
     LIMIT 1
   ";
 
-  return fetch_query($db, $sql, $user_id);
+  return fetch_query($db, $sql, [$user_id]);
 }
 //ユーザー名からuser情報を獲得
 function get_user_by_name($db, $name){

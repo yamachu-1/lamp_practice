@@ -83,15 +83,14 @@ function insert_item($db, $name, $price, $stock, $filename, $status){
   $sql = "
     INSERT INTO
       items(
-        name = ?,
-        price = ?,
-        stock = ?,
-        image = ?,
-        status = ?
+        name,
+        price,
+        stock,
+        image,
+        status
       )
-
+      VALUES(?,?,?,?,?)
   ";
-
   return execute_query($db, $sql, [$name, $price, $stock, $filename, $status_value]);
 }
 //item_idから検索して、statusを更新
@@ -110,6 +109,7 @@ function update_item_status($db, $item_id, $status){
 }
 //item_idからstockを更新
 function update_item_stock($db, $item_id, $stock){
+
   $sql = "
     UPDATE
       items
@@ -122,73 +122,178 @@ function update_item_stock($db, $item_id, $stock){
   
   return execute_query($db, $sql, [$stock, $item_id]);
 }
+
+//item_idからstockを更新
+function purchased_item_stock($db, $item_id, $stock, $amount){
+  $new_stock = $stock - $amount;
+  
+    $sql = "
+      UPDATE
+        items
+      SET
+        stock = ?
+      WHERE
+        item_id = ?
+      LIMIT 1
+    ";
+    
+    return execute_query($db, $sql, [$new_stock, $item_id]);
+  }
+
 //購入履歴をDBに登録
-function add_purchase_history($db, $user_id,$item_id,$amount,$price){
+function add_purchase_history($db, $user_id, $date){
+
+  $date = DATE;
+  $sql = "
+  INSERT INTO 
+	purchase(
+    user_id,
+    purchase_date
+    )
+    VALUES (? , ?)
+    ";
+    return execute_query($db,$sql, [$user_id, $date]);
+}
+
+function read_purchase_id($db){
+  $sql = "  
+  SELECT 
+    purchase_id
+  FROM
+    purchase
+  ORDER BY purchase_id DESC
+    LIMIT 1
+  ";
+  return fetch_all_query($db, $sql);
+}
+
+function add_purchase_details($db, $purchase_id, $item_id,$amount,$price){
+
   $sql = "
     INSERT INTO
-      purchase(
-        user_id = ?, 
-        item_id = ?, 
-        )
-    AND
-    INSERT INTO
         purchase_details(
-          item_id =?,
-          amount =?
+          purchase_id,
+          item_id,
+          amount,
+          price
           )
+        VALUES(?,?,?,?)
     ";
-    return execute_query($db,$sql, [$user_id, $item_id, $item_id, $amount]);
+    return execute_query($db,$sql, [$purchase_id, $item_id, $amount, $price]);
 }
 //DBへの登録＋stockの更新ができるか確認！
-function update_item_stock_and_history($db,$user_id, $item_id, $stock, $amount, 
-$price){
+function update_item_stock_and_purchase_details($db, $purchase_id, $item_id, $stock, $amount, $price){
   $db->beginTransaction();
-  if(update_item_stock($db, $item_id, $stock) && add_purchase_history($db,$user_id,$item_id,$amount,$price)){
+  if(purchased_item_stock($db, $item_id, $stock, $amount)
+   && add_purchase_details($db, $purchase_id, $item_id, $amount, $price)){
     $db->commit();
-    return execute_query($db, $sql);
-    echo 'aaa';
+    return true;
   }
     $db->rollback();
     return set_error('購入に失敗しました。');
-    echo 'iii';
+    return false;
 }
+
 function output_history($db, $user_id){
   $sql = "
-  SELECT
-    items.item_id,
-    items.name,
-    items.price,
-    items.stock,
-    items.image,
-    purchase.purchase_id,
-    purchase.user_id,
-    purchase.purchase_date,
-    purchase_details.purchase_id,
-    purchase_details.item_id,
-    purchase_details.amount
-    
-  FROM
-    purchase
+  SELECT 
+  purchase.user_id,
+  purchase.purchase_id,
+  purchase_date,
+  SUM(price * amount) as total
+ FROM
+   purchase
   INNER JOIN
+   purchase_details
+ ON
+   purchase_details.purchase_id = purchase.purchase_id
+ WHERE
+  user_id = ?
+ GROUP BY
+  purchase.purchase_id
+ ORDER BY
+  purchase_id DESC
+  ";
+
+return fetch_all_query($db, $sql, [$user_id]);
+}
+
+function output_detail($db, $purchase_id){
+  $sql = "
+  SELECT 
+    purchase.user_id,
+    purchase.purchase_id,
+    purchase_date, 
+    items.name, 
+    purchase_details.price, 
+    purchase_details.amount, 
+    purchase_details.price * purchase_details.amount as subtotal 
+  FROM 
+    purchase 
+  INNER JOIN 
+    purchase_details 
+  ON 
+    purchase_details.purchase_id = purchase.purchase_id 
+  INNER JOIN 
+    items 
+  ON 
+    purchase_details.item_id = items.item_id 
+  WHERE 
+    purchase.purchase_id = ?
+  ";
+
+return fetch_all_query($db, $sql, [$purchase_id]);
+}
+
+function output_history_by_admin($db){
+  $sql = "
+  SELECT 
+  purchase.purchase_id,
+  purchase_date,
+  SUM(price * amount) as total
+ FROM
+   purchase
+ 
+  INNER JOIN
+   purchase_details
+ ON
+   purchase_details.purchase_id = purchase.purchase_id
+ GROUP BY
+  purchase.purchase_id
+ 
+  ";
+return fetch_all_query($db, $sql);
+}
+//cartにある一つ一つの商品のpriceとamountを掛け算した結果を足す。
+function sum_purchase($purchases){
+  $total_price = 0;
+  $purchase = 0;
+  foreach($purchases as $purchase){
+    $total_price += $purchase['price'] * $purchase['amount'];
+  }
+  return $total_price;
+}
+
+function get_ranking($db){
+  $sql = "
+  SELECT 
+   SUM(amount) as total,
+   items.name,
+   items.price,
+   items.image
+  FROM
     purchase_details
-  ON
-    purchase.purchase_id = purchase_details.purchase_id
   INNER JOIN
     items
   ON
-    items.item_id = purchase_details.item_id
-
+    purchase_details.item_id = items.item_id
+  GROUP BY
+    purchase_details.item_id
   ORDER BY
-   purchase_date ASC
+    total DESC 
+  LIMIT 3
   ";
-if(is_admin($user['type']) !== 1){
-  $sql .="
-  WHERE
-    purchase.user_id = ?
-  ";
-}
-
-return fetch_all_query($db, $sql, [$user_id]);
+  return fetch_all_query($db,$sql);
 }
 
 function destroy_item($db, $item_id){

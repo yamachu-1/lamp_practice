@@ -35,7 +35,7 @@ function fetch_all_query($db, $sql, $params = array()){
     $statement->execute($params);
     return $statement->fetchAll();
   }catch(PDOException $e){
-    set_error('データ取得に失敗しました。');
+    set_error('データ取得に失敗しました。'. $e);
   }
   return false;
 }
@@ -46,7 +46,7 @@ function execute_query($db, $sql, $params = array()){
     $statement = $db->prepare($sql);
     return $statement->execute($params);
   }catch(PDOException $e){
-    set_error('更新に失敗しました。'. $sql);
+    set_error('更新に失敗しました。'. $sql . $e);
 
   }
   return false;

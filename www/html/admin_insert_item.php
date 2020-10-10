@@ -18,13 +18,18 @@ if(is_admin($user) === false){
   redirect_to(LOGIN_URL);
 }
 
+//POSTがあったらnameを取得
 $name = get_post('name');
+//POSTがあったらpriceを取得
 $price = get_post('price');
+//POSTがあったらstatusを取得
 $status = get_post('status');
+//POSTがあったらstockを取得
 $stock = get_post('stock');
-
+//POSTがあったらimageを取得
 $image = get_file('image');
 
+//登録アイテム関数でDBに登録
 if(regist_item($db, $name, $price, $stock, $status, $image)){
   set_message('商品を登録しました。');
 }else {
