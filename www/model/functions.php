@@ -159,7 +159,7 @@ function is_valid_upload_image($image){
 
 //htmlspecialcharsを略した。
 function h($str){
-  htmlspecialchars($str,ENT_QUOTES,'UTF-8');
+  return htmlspecialchars($str,ENT_QUOTES,'UTF-8');
 }
 
 // トークンの生成

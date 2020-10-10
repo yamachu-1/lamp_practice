@@ -11,15 +11,25 @@ if(is_logined() === false){
   redirect_to(LOGIN_URL);
 }
 
-$db = get_db_connect();
-$user = get_login_user($db);
+// POSTでtoken情報を取得
+$token = get_post('csrf_token');
+// セッションとpostのtoken情報が同じか確認
+if(is_valid_csrf_token($token) === TRUE){
+//token生成
+ $token = get_csrf_token();
 
-$cart_id = get_post('cart_id');
+  $db = get_db_connect();
+  $user = get_login_user($db);
 
-if(delete_cart($db, $cart_id)){
-  set_message('カートを削除しました。');
-} else {
-  set_error('カートの削除に失敗しました。');
+  //cart_idがpostされたら代入
+  $cart_id = get_post('cart_id');
+
+  //cart_idの物を抽出し、行を削除
+  if(delete_cart($db, $cart_id)){
+    set_message('カートを削除しました。');
+  } else {
+    set_error('カートの削除に失敗しました。');
+  }
+
+  redirect_to(CART_URL);
 }
-
-redirect_to(CART_URL);

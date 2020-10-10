@@ -51,6 +51,7 @@ function get_user_cart($db, $user_id, $item_id){
       carts.user_id = ?
     AND
       items.item_id = ?
+      
   ";
 
   return fetch_query($db, $sql, [$user_id, $item_id]);
@@ -77,8 +78,8 @@ function insert_cart($db, $user_id, $item_id, $amount = 1){
         item_id,
         user_id,
         amount
-      )
-    VALUES(?, ?, ?)
+       )
+      VALUES(?, ?, ?)
   ";
 
   return execute_query($db, $sql, [$item_id, $user_id, $amount]);
@@ -116,12 +117,17 @@ function purchase_carts($db, $carts){
   if(validate_cart_purchase($carts) === false){
     return false;
   }
+
+  //先に購入履歴に入力
+  add_purchase_history($db,$carts[0]['user_id'],$date);
+  $purchase_id = read_purchase_id($db)[0]['purchase_id'];
   //配列から一つずつ繰り返し
   foreach($carts as $cart){
     //item_idのものに(stock-注文数)した物を上書き
-    if(update_item_stock_and_history(
+    if(update_item_stock_and_purchase_details(
         $db, 
-        $cart['user_id'],
+        // $cart['user_id'],
+        $purchase_id,
         $cart['item_id'], 
         $cart['stock'],
         $cart['amount'],
